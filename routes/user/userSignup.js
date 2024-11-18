@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
 import upload from '../../middlewares/multer.js';
-import {CartModel, UserInfoModel, UserModel} from '../../models/userModel.js'
+import {CartModel, UserInfoModel, UserModel,UserOrderHistoryModel} from '../../models/userModel.js'
 import imageUploadToCloudinary from '../../middlewares/uploadMiddleware.cjs';
 const router = express.Router();
 
@@ -15,7 +15,7 @@ function generateRandomId() {
   }
 
 router.post('/signup', upload.array('images'), imageUploadToCloudinary, async function(req, res){
-    const { name, address, phoneNo, dateofbirth, email, password } = req.body;
+    const { name, address,pincode, phoneNo, dateofbirth, email, password } = req.body;
     
     let errorThrown = false;
     try {
@@ -29,7 +29,8 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
        let addid = generateRandomId()
        let addressobj = {
         addressId: addid,
-        address: address
+        address: address,
+        pincode: pincode
        }
        addressarray.push(addressobj)
         await UserInfoModel.create({
@@ -47,6 +48,11 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
             items: [],
             beforeDiscount: 0,
             total: 0
+        })
+
+        await UserOrderHistoryModel.create({
+            userId: newUser._id,
+            orderHistory: []
         })
 
     } catch(err) {

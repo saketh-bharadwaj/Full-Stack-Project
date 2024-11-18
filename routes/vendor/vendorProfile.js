@@ -5,10 +5,11 @@ import { VendorInfoModel } from '../../models/vendorModel.js';
 const router = express.Router();
 
 router.patch('/update-profile', vendorAuth, async function(req,res){
-    const {name, address, licencenum, telnum} = req.body;
+    const {name, address, pincode, licencenum, telnum} = req.body;
     let updatedetails = {};
     if(name!== undefined) updatedetails.name=name;
     if(address!== undefined) updatedetails.address=address;
+    if(pincode!==undefined) updatedetails.pincode=pincode;
     if(licencenum!== undefined) updatedetails.licencenum=licencenum;
     if(telnum!== undefined) updatedetails.telnum=telnum;
 

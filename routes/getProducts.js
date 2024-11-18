@@ -6,30 +6,30 @@ const router = express.Router();
 
 router.get('/products', async function (req, res) {
   try {
-    // Step 1: Fetch all products
-    const products = await ProductModel.find(); // Retrieve all products
+   
+    const products = await ProductModel.find(); 
 
-    // Step 2: Fetch all product quantities
-    const productQuantities = await ProductQuantityModel.find(); // Retrieve all quantities
+    
+    const productQuantities = await ProductQuantityModel.find(); 
 
-    // Step 3: Combine product and quantity information
+   
     const productsWithQuantities = products.map(product => {
-      // Find the corresponding quantity information for this product
+      
       const productQuantity = productQuantities.find(
         (quantity) => quantity.productId.toString() === product._id.toString()
       );
 
-      // If there is a corresponding quantity, merge the data
+      
       if (productQuantity) {
         return {
-          ...product.toObject(),  // Convert mongoose document to plain object
-          hasVariant: productQuantity.hasVariant,  // Add hasVariant field
-          variantType: productQuantity.variantType,  // Add variantType field
+          ...product.toObject(),  
+          hasVariant: productQuantity.hasVariant,  
+          variantType: productQuantity.variantType,
           quantity: productQuantity.quantity,
-          total: productQuantity.total  // Add the array of quantities (type and quantity)
+          total: productQuantity.total  
         };
       } else {
-        // If no quantity info exists, return the product as is
+       
         return product.toObject();
       }
     });

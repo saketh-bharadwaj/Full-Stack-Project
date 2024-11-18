@@ -4,7 +4,7 @@ const connectDB = async () => {
     
         // Establish a connection to MongoDB without deprecated options
         
-        await mongoose.connect(process.env.MONGODB_URI);
+        await mongoose.connect("mongodb+srv://saketh214:saketh21@cluster0.hgtdt.mongodb.net/e-commerce");
 
         mongoose.connection.on('connected', () => {
             console.log('Database connected successfully.');
@@ -14,8 +14,7 @@ const connectDB = async () => {
             console.error(`Database connection error: ${err}`);
         });
     
-    
+        
 };
 
 export default connectDB;
-

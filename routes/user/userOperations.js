@@ -1,7 +1,9 @@
 import express from 'express'
 import userAuth from '../../middlewares/userAuth.js';
 import { ProductModel, ProductReviewModel, ProductQuantityModel,ProductQuestionModel } from '../../models/productModel.js';
-import { UserModel, UserInfoModel, UserCartModel, CartModel } from '../../models/userModel.js';
+import { UserModel, UserInfoModel, UserCartModel, CartModel, UserOrderHistoryModel } from '../../models/userModel.js';
+import { VendorInfoModel } from '../../models/vendorModel.js';
+import {calculateDistanceAndCost as cal_cost} from '../../middlewares/distance_calc.js';
 import mongoose from 'mongoose';
 const ObjectId = mongoose.Types.ObjectId;
 const router = express.Router();
@@ -14,6 +16,8 @@ function generateRandomId() {
   }
   return id;
 }
+
+
 
 router.post('/addReview/',userAuth, async function (req, res) {
     const {productId, ratings, review} = req.body;
@@ -108,13 +112,14 @@ router.post('/addNewAddress', userAuth, async function(req,res){
       const user = await UserInfoModel.findOne({
       userId: req.userId
       })
-      const {newadd} = req.body
+      const {newadd,pincode} = req.body
       
       const addId = generateRandomId();
 
       const newaddobj = {
         addressId: addId,
-        address: newadd
+        address: newadd,
+        pincode: pincode
       }
 
       user.address.push(newaddobj);
@@ -255,7 +260,7 @@ router.post('/answerQues/:productId', userAuth, async function (req, res) {
 });
 
 router.post('/update-cart', userAuth, async function (req, res) {
-  const { items } = req.body;
+  const { items, addId } = req.body;
  
   try {
     
@@ -264,7 +269,7 @@ router.post('/update-cart', userAuth, async function (req, res) {
     })
     
     
-    // Ensure that the usercart exists
+    
     if (!usercart) {
       return res.status(404).json({
         success: false,
@@ -272,12 +277,15 @@ router.post('/update-cart', userAuth, async function (req, res) {
       });
     }
 
-    // If items is an empty array, reset the cart
+    //if received an empty array - user removed all items from cart
     if (!items || items.length === 0) {
       usercart.items = [];
       usercart.hasItems = false;
       usercart.beforeDiscount = 0;
-      usercart.total = 0;
+      usercart.afterDiscount =0;
+      usercart.grandtotal =0;
+      usercart.totalShipping=0;
+      //usercart.total = 0;
 
       await usercart.save();
       return res.status(200).json({
@@ -290,7 +298,16 @@ router.post('/update-cart', userAuth, async function (req, res) {
     
     const newItems = [];
     let beforeDiscount = 0;
-    let total = 0;
+    let afterDiscount = 0;
+    let totalShipping =  0;
+    let grandTotal = 0;
+
+    const user_info = await UserInfoModel.findOne({
+      userId : req.userId
+    })
+
+    const user_address = user_info.address.find(item => item.addressId===addId)
+    const user_pincode = user_address.pincode
 
    
     for (let item of items) {
@@ -298,10 +315,69 @@ router.post('/update-cart', userAuth, async function (req, res) {
       
       
       const product = await ProductModel.findById(productId);
+
       if (!product) {
         return res.status(404).json({ success: false, message: 'Product not found' });
       }
+      const vendorId = product.vendorId
 
+      const vendorInfo = await VendorInfoModel.findOne({
+        vendorId: vendorId
+      })
+      
+      //calculate shipping charges if applicable
+      const vendorName = vendorInfo.name
+      const vendorPincode= vendorInfo.pincode
+      
+
+      let shipping_cost = parseInt(0)
+      
+      let {distance, cost: s_price} = cal_cost(user_pincode, vendorPincode)
+      
+      distance = parseInt(distance)
+      s_price = parseInt(s_price)
+
+      if(product.delivery==='company'){
+        
+        const ship_price =  parseInt(s_price) * parseInt(quantity);
+        const weight_price = parseInt(product.weight) * parseInt(quantity);
+
+        shipping_cost+= parseInt(ship_price + weight_price)
+      }
+      if (isNaN(shipping_cost)) {
+        throw new Error('Shipping cost calculation resulted in NaN');
+    }
+ 
+      //calculate ETA
+      let eta=0
+      const productWeight = product.weight;
+      if(productWeight<=10){
+        if (distance <=5){
+          eta = 1
+        }
+        else if(distance <=10){
+          eta = 2
+        }
+        else if(distance <=15){
+          eta = 3
+        }
+        else eta = 4
+      }
+      else {
+        if (distance <=5){
+          eta = 2
+        }
+        else if(distance <=10){
+          
+          eta = 3
+        }
+        else if(distance <=15){
+          eta = 4
+        }
+        else eta = 5
+      }
+
+      
       const price = product.price; 
       const discount = product.discount;
       const productname = product.name;
@@ -325,14 +401,20 @@ router.post('/update-cart', userAuth, async function (req, res) {
       const eligible = quantity <= availableQuantity;
       const left = eligible ? 0 : availableQuantity;
 
+      
+      
+
       // Calculate subtotals
       const subtotal1 = price * quantity;  // Before discount
       const discountPercentage = applieddisc ? applieddisc / 100 : 0;
       const subtotal2 = subtotal1 * (1 - discountPercentage);  // After discount
+      const totalPrice = subtotal2 + shipping_cost
 
       // Add to running totals
-      beforeDiscount += subtotal1;
-      total += subtotal2;
+      beforeDiscount += parseInt(subtotal1);
+      afterDiscount += parseInt(subtotal2)
+      totalShipping+=parseInt( shipping_cost)
+      grandTotal += parseInt(totalPrice);
 
       // Create a new item object for the cart
       newItems.push({
@@ -344,21 +426,28 @@ router.post('/update-cart', userAuth, async function (req, res) {
         price,
         eligible,
         left,
+        eta,
+        vendorId,
+        vendorName,
         subtotal1,
-        subtotal2
+        subtotal2,
+        shipping_cost,
+        totalPrice
       });
     }
 
-    // Update the user's cart with the new items
+    
     usercart.items = newItems;
     usercart.hasItems = newItems.length > 0;
-    usercart.beforeDiscount = beforeDiscount;
-    usercart.total = total;
+    usercart.beforeDiscount = parseInt(beforeDiscount);
+    usercart.afterDiscount = parseInt(afterDiscount)
+    usercart.totalShipping = parseInt(totalShipping)
+    usercart.grandtotal = parseInt(grandTotal);
 
-    // Save the updated cart
+   
     await usercart.save();
 
-    // Return the updated cart details
+    // Return
     return res.status(200).json({
       success: true,
       message: 'Cart updated successfully',
@@ -374,6 +463,7 @@ router.post('/update-cart', userAuth, async function (req, res) {
     });
   }
 });
+
 
 router.get('/cart', userAuth, async function(req, res){
   try{
@@ -394,6 +484,62 @@ router.get('/cart', userAuth, async function(req, res){
     })
   }
 
+})
+
+//send user token with header
+router.post('/checkout', userAuth, async function(req, res){
+  
+  try{
+    const usercart = await CartModel.findOne({
+      userId: req.userId
+    })
+    
+
+    /*
+    step1: take each item from cart and calculate total price (incl. shipping if applicable)
+    step2: considering shipping charges dont contribute to profits
+    step3: for our company side take transaction value as total + shipping
+    step4: take percentage from each product(+deleivery) as revenue for us. profit will be only our cut
+    step5: price - our cut as revenue for vendor. also give purchase history for them
+    step6: create trasaction history for each order 
+    step7: empty the cart
+    */
+
+    const user_info = await UserInfoModel.findOne({
+      userId : req.userId
+    })
+
+    const user_pincode = user_info.address.find(item => item.addressId===addId)
+    const cart_items = usercart.items;
+
+    const userOrderHistory = await UserOrderHistoryModel.findOne({
+      userID: req.userId
+    })
+
+    for(let item of cart_items){
+      const eligible = item.eligible
+
+      //if product is eligible, then only do the following steps
+      if(eligible){
+        
+        
+        
+      }
+    }
+    
+
+
+    res.json({
+      message: "Ok"
+    })
+
+  }catch(err){
+    res.status(500).json({
+      success: false,
+      message: "unable to fetch cart/ process payment"
+    })
+
+  }
 })
 
 

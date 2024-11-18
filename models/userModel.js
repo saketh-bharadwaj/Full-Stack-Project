@@ -16,26 +16,38 @@ const UserInfo = new Schema({
     image: {type: [String], default: ["https://res.cloudinary.com/dkngwqe98/image/upload/v1728192792/default-user-pic_w0patr.jpg"]}
 })
 
+//may be this is wrong, has to be removed later
 const UserCart = new Schema({
     userId: {type: ObjectId, required: true},
     hasItems: {type: Boolean, default: false},
     items: {type: [Object]},
     beforeDiscount: {type: Number, default: 0},
-    total: {type: Number, default: 0}
+    totalShipping: {type: Number, default: 0},
+    grandtotal: {type: Number, default: 0}
 })
+
 
 const Cart = new Schema({
     userId: {type: ObjectId, required: true},
     hasItems: {type: Boolean, default: false},
     items: {type: [Object]},
     beforeDiscount: {type: Number, default: 0},
-    total: {type: Number, default: 0}
+    afterDiscount: {type: Number, default: 0},
+    totalShipping: {type: Number, default: 0},
+    grandtotal: {type: Number, default: 0}
 })
+
+const User_Order_history = new Schema ({
+    userID: {type: ObjectId, required: true},
+    orderHistory : {type: [Object]}
+})
+
 
 const UserModel= mongoose.model('users',User);
 const UserInfoModel = mongoose.model('user-info',UserInfo)
 const UserCartModel = mongoose.model('usercart',UserCart)
 const CartModel = mongoose.model('cart', Cart)
+const UserOrderHistoryModel = mongoose.model('user-orders', User_Order_history)
 
-export { UserModel, UserInfoModel, UserCartModel, CartModel};
+export { UserModel, UserInfoModel, UserCartModel, CartModel, UserOrderHistoryModel};
  

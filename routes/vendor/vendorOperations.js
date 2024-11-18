@@ -3,7 +3,7 @@ import imgupload from '../../controllers/routeupload.js';
 import imageUploadToCloudinary from '../../middlewares/uploadMiddleware.cjs';
 import upload from '../../middlewares/multer.js';
 import vendorAuth from '../../middlewares/vendorAuth.js';
-import { ProductModel, ProductQuantityModel, ProductQuestionModel } from '../../models/productModel.js';
+import { ProductModel, ProductQuantityModel, ProductQuestionModel, ProductSalesModel } from '../../models/productModel.js';
 import { VendorInfoModel } from '../../models/vendorModel.js';
 
 import { ProductReviewModel } from '../../models/productModel.js';
@@ -84,7 +84,7 @@ router.get('/products', vendorAuth, async function(req,res){
 
 router.post('/addproduct',vendorAuth, upload.array('images',5), imageUploadToCloudinary, async function(req, res){
     
-    const { name, price, description, category, hasVariant, variantType, quantity } = req.body;
+    const { name, price, description, category,subCategory, hasVariant, variantType, quantity, costPrice, weight, delivery } = req.body;
     
     
 
@@ -107,6 +107,7 @@ router.post('/addproduct',vendorAuth, upload.array('images',5), imageUploadToClo
             inStock: true,
             description: description,
             category: category,
+            subCategory: subCategory,
             vendorId: req.vendorId,
             vendorName: vendor.name,
             image: req.image_url,
@@ -119,7 +120,10 @@ router.post('/addproduct',vendorAuth, upload.array('images',5), imageUploadToClo
                   applied: false,
                   disc: 0
                 }
-              }
+              },
+            costPrice: costPrice,
+            weight: weight,
+            delivery: delivery
         });
         console.log(quantity)
         
@@ -151,6 +155,13 @@ router.post('/addproduct',vendorAuth, upload.array('images',5), imageUploadToClo
             vendorId: req.vendorId,
             hasQuestions: false,
             questions: []
+        })
+
+        await ProductSalesModel.create ({
+            productId: newProduct._id,
+            sales: [],
+            quantitySold: 0,
+            productRevenue: 0
         })
 
 

@@ -8,6 +8,7 @@ const Product = new Schema({
     inStock: {type: Boolean, required: true},
     description: {type: String, default: "Not Available"},
     category:{type: String},
+    subCategory: {type: String},
     vendorId: ObjectId,
     vendorName: {type: String , required: true},
     image: {type: [String]},
@@ -20,8 +21,10 @@ const Product = new Schema({
           applied: Boolean,
           disc: Number
         }
-      } 
-
+      },
+    costPrice: {type: Number, required: true},
+    weight: {type: Number, required: true},
+    delivery :{type: String, required: true}
 
 })
 
@@ -51,10 +54,17 @@ const ProductQuestions = new Schema({
   questions: {type :[Object]}
 })
 
+const ProductSales = new Schema ({
+  productId: {type: ObjectId, required: true},
+  sales: {type: [Object]},
+  quantitySold: {type: Number},
+  productRevenue: {type: Number}
+})
 
 const ProductModel = mongoose.model('products', Product)
 const ProductQuantityModel= mongoose.model('product-quantity',ProductQuantity)
 const ProductReviewModel = mongoose.model('user-reviews', ProductReview)
 const ProductQuestionModel = mongoose.model('product-questions',ProductQuestions)
+const ProductSalesModel = mongoose.model('product-sales',ProductSales)
 
-export {ProductModel, ProductQuantityModel, ProductReviewModel, ProductQuestionModel}
+export {ProductModel, ProductQuantityModel, ProductReviewModel, ProductQuestionModel, ProductSalesModel}

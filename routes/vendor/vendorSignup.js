@@ -8,7 +8,7 @@ import { VendorModel, VendorInfoModel } from '../../models/vendorModel.js';
 const router = express.Router();
 
 router.post('/signup', upload.array('images'), imageUploadToCloudinary, async function(req, res){
-    const { name, address, telnum, licencenum, email, password } = req.body;
+    const { name, address,pincode, telnum, licencenum, email, password } = req.body;
     
     let errorThrown = false;
     try {
@@ -22,6 +22,7 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
         await VendorInfoModel.create({
             name: name,
             address: address,
+            pincode: pincode,
             telnum: telnum,
             licencenum: licencenum,
             vendorId: newVendor._id,

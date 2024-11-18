@@ -1,0 +1,137 @@
+{
+    "categories": [
+      {
+        "name": "Electronics and Gadgets",
+        "platformFee": "12%",
+        "subcategories": [
+          "Smartphones",
+          "Laptops",
+          "Cameras",
+          "Headphones",
+          "Smartwatches",
+          "Gaming Consoles"
+        ]
+      },
+      {
+        "name": "Clothing and Accessories",
+        "platformFee": "10%",
+        "subcategories": [
+          "Men's Clothing",
+          "Women's Clothing",
+          "Kid's Wear",
+          "Footwear",
+          "Jewelry",
+          "Bags and Wallets"
+        ]
+      },
+      {
+        "name": "Groceries and Food Supplies",
+        "platformFee": "7%",
+        "subcategories": [
+          "Fruits and Vegetables",
+          "Dairy Products",
+          "Snacks and Beverages",
+          "Spices and Condiments",
+          "Packaged Food",
+          "Personal Care Essentials"
+        ]
+      },
+      {
+        "name": "Furniture and Home Décor",
+        "platformFee": "10%",
+        "subcategories": [
+          "Sofas and Chairs",
+          "Tables and Desks",
+          "Beds and Mattresses",
+          "Curtains and Rugs",
+          "Wall Art",
+          "Lighting and Lamps"
+        ]
+      },
+      {
+        "name": "Tools and Machinery",
+        "platformFee": "12%",
+        "subcategories": [
+          "Power Tools",
+          "Hand Tools",
+          "Garden Equipment",
+          "Heavy Machinery",
+          "Workshop Accessories",
+          "Safety Equipment"
+        ]
+      },
+      {
+        "name": "Industrial Products",
+        "platformFee": "12%",
+        "subcategories": [
+          "Construction Materials",
+          "Electrical Equipment",
+          "Mechanical Components",
+          "Adhesives and Sealants",
+          "Industrial Chemicals",
+          "Pipes and Fittings"
+        ]
+      },
+      {
+        "name": "Books and Stationery",
+        "platformFee": "6%",
+        "subcategories": [
+          "Fiction Books",
+          "Non-Fiction Books",
+          "Academic Books",
+          "Notebooks",
+          "Pens and Writing Instruments",
+          "Art Supplies"
+        ]
+      },
+      {
+        "name": "Health and Personal Care",
+        "platformFee": "8%",
+        "subcategories": [
+          "Skincare",
+          "Haircare",
+          "Vitamins and Supplements",
+          "Fitness Equipment",
+          "Oral Care",
+          "Medical Supplies"
+        ]
+      },
+      {
+        "name": "Automotive",
+        "platformFee": "15%",
+        "subcategories": [
+          "Car Accessories",
+          "Motorcycle Parts",
+          "Engine Components",
+          "Car Care Products",
+          "Tires and Wheels",
+          "Electric Vehicle Accessories"
+        ]
+      },
+      {
+        "name": "Sports and Outdoor",
+        "platformFee": "11%",
+        "subcategories": [
+          "Sports Apparel",
+          "Fitness Equipment",
+          "Outdoor Gear",
+          "Cycling",
+          "Team Sports Equipment",
+          "Camping and Hiking"
+        ]
+      },
+      {
+        "name": "Art and Collectibles",
+        "platformFee": "15%",
+        "subcategories": [
+          "Paintings",
+          "Sculptures",
+          "Antiques",
+          "Handicrafts",
+          "Rare Books",
+          "Photography Prints"
+        ]
+      }
+    ]
+  }
+  
