@@ -7,7 +7,7 @@ const upload = multer({
   storage,
   fileFilter(req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ext === '.png' || ext === '.jpg' || ext === '.jpeg') {
+    if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') {
       cb(null, true);
     } else {
       cb(new Error('Only images are allowed!'), false);

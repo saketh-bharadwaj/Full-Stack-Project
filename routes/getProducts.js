@@ -66,7 +66,7 @@ router.get('/product/:productId', async function (req, res){
     })
 
     
-    // merge product and its quantity
+    // merge product and its quantity,questions,reviews
     let responseData = product.toObject();
     if (productQuantity) {
       responseData = {

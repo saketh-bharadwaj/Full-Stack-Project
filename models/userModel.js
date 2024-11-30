@@ -22,8 +22,12 @@ const UserCart = new Schema({
     hasItems: {type: Boolean, default: false},
     items: {type: [Object]},
     beforeDiscount: {type: Number, default: 0},
+    afterDiscount: {type: Number, default: 0},
     totalShipping: {type: Number, default: 0},
-    grandtotal: {type: Number, default: 0}
+    grandtotal: {type: Number, default: 0},
+    addId: {type: String, required: true},
+    address: {type: String},
+    pincode: {type: String}
 })
 
 
@@ -34,7 +38,10 @@ const Cart = new Schema({
     beforeDiscount: {type: Number, default: 0},
     afterDiscount: {type: Number, default: 0},
     totalShipping: {type: Number, default: 0},
-    grandtotal: {type: Number, default: 0}
+    grandtotal: {type: Number, default: 0},
+    addId: {type: String, required: true},
+    address: {type: String},
+    pincode: {type: String}
 })
 
 const User_Order_history = new Schema ({

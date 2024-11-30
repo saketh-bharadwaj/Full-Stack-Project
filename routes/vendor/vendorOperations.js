@@ -233,6 +233,12 @@ router.delete('/delete-product/:productId', vendorAuth, async function (req,res)
 router.patch('/update-details/:productId', vendorAuth, async function(req, res){
     const updates = req.body
     const id=req.params.productId
+    if(id===undefined){
+        res.status(400).json({
+            success: false,
+            error: "Please provide Product Id"
+        })
+    }
     try{
         const updatedProduct = await ProductModel.findByIdAndUpdate(id, updates, { new: true });
         if(!updatedProduct){

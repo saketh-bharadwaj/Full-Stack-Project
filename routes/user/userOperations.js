@@ -1,10 +1,11 @@
 import express from 'express'
 import userAuth from '../../middlewares/userAuth.js';
-import { ProductModel, ProductReviewModel, ProductQuantityModel,ProductQuestionModel } from '../../models/productModel.js';
+import { ProductModel, ProductReviewModel, ProductQuantityModel,ProductQuestionModel, ProductSalesModel } from '../../models/productModel.js';
 import { UserModel, UserInfoModel, UserCartModel, CartModel, UserOrderHistoryModel } from '../../models/userModel.js';
-import { VendorInfoModel } from '../../models/vendorModel.js';
+import { VendorInfoModel, VendorSalesModel } from '../../models/vendorModel.js';
 import {calculateDistanceAndCost as cal_cost} from '../../middlewares/distance_calc.js';
 import mongoose from 'mongoose';
+import { OrderModel } from '../../models/adminModel.js';
 const ObjectId = mongoose.Types.ObjectId;
 const router = express.Router();
 
@@ -16,6 +17,33 @@ function generateRandomId() {
   }
   return id;
 }
+
+function orderIdGenerator() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const date = new Date();
+  
+  // Get the date in YYYYMMDD format
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const datePart = `${year}${month}${day}`; // Example: '20241123'
+
+  
+  let orderpart = '';
+  for (let i = 0; i < 8; i++) {
+    orderpart += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  let orderId = datePart +orderpart;
+  // Combine the date and random part
+  return orderId;
+}
+
+function getPlatformfee(){
+  // will later write logic for that, currently returning 10% remember to take Category and SubCategory as params
+  return 10
+}
+
 
 
 
@@ -114,6 +142,7 @@ router.post('/addNewAddress', userAuth, async function(req,res){
       })
       const {newadd,pincode} = req.body
       
+      
       const addId = generateRandomId();
 
       const newaddobj = {
@@ -132,12 +161,15 @@ router.post('/addNewAddress', userAuth, async function(req,res){
         data: user
       })
   }catch(err){
+    console.log(err)
     res.status(500).json({
       success: false,
       message: "unable to add address"
     })
   }
 })
+
+
 
 router.post('/addQuestion/:productId', userAuth, async function(req, res){
   try{
@@ -308,6 +340,7 @@ router.post('/update-cart', userAuth, async function (req, res) {
 
     const user_address = user_info.address.find(item => item.addressId===addId)
     const user_pincode = user_address.pincode
+    const u_address = user_address.address;
 
    
     for (let item of items) {
@@ -381,12 +414,19 @@ router.post('/update-cart', userAuth, async function (req, res) {
       const price = product.price; 
       const discount = product.discount;
       const productname = product.name;
+      const images = product.image
       let applieddisc = 0
+      let discountType;
       
       if(discount.admin.disc>=discount.vendor.disc) {
         applieddisc = discount.admin.disc
+        discountType = 1 // 1 corresponds to admin discount
       }
-      else applieddisc = discount.vendor.disc
+      else {
+        applieddisc = discount.vendor.disc
+        discountType = 2; // 2 corresponds to vendor discount
+      } 
+      
       
       const productQuantity = await ProductQuantityModel.findOne({ productId });
       if (!productQuantity) {
@@ -406,8 +446,10 @@ router.post('/update-cart', userAuth, async function (req, res) {
 
       // Calculate subtotals
       const subtotal1 = price * quantity;  // Before discount
-      const discountPercentage = applieddisc ? applieddisc / 100 : 0;
-      const subtotal2 = subtotal1 * (1 - discountPercentage);  // After discount
+      const discountPercentage = applieddisc ? (applieddisc / 100) : 0;
+      const subtotal2 = subtotal1 - (subtotal1 *  discountPercentage);  // After discount
+      //console.log("subtotal 1 = "+ subtotal1)
+      //console.log("Sub total 2 = " + subtotal2)
       const totalPrice = subtotal2 + shipping_cost
 
       // Add to running totals
@@ -420,9 +462,11 @@ router.post('/update-cart', userAuth, async function (req, res) {
       newItems.push({
         productId,
         name: productname,
+        images, 
         variant,
         quantity,
         discount: applieddisc,
+        discountType,
         price,
         eligible,
         left,
@@ -443,6 +487,9 @@ router.post('/update-cart', userAuth, async function (req, res) {
     usercart.afterDiscount = parseInt(afterDiscount)
     usercart.totalShipping = parseInt(totalShipping)
     usercart.grandtotal = parseInt(grandTotal);
+    usercart.addId = addId;
+    usercart.address = u_address;
+    usercart.pincode = user_pincode;
 
    
     await usercart.save();
@@ -462,6 +509,7 @@ router.post('/update-cart', userAuth, async function (req, res) {
       error: err.message
     });
   }
+
 });
 
 
@@ -471,13 +519,12 @@ router.get('/cart', userAuth, async function(req, res){
       userId: req.userId
     })
 
-    
-    
     res.status(200).json({
       success: true,
       cart: usercart
     })
   }catch(err){
+    console.error(err);
     res.status(500).json({
       success: false,
       message: "unable to fetch cart now"
@@ -485,17 +532,7 @@ router.get('/cart', userAuth, async function(req, res){
   }
 
 })
-
-//send user token with header
-router.post('/checkout', userAuth, async function(req, res){
-  
-  try{
-    const usercart = await CartModel.findOne({
-      userId: req.userId
-    })
-    
-
-    /*
+/*
     step1: take each item from cart and calculate total price (incl. shipping if applicable)
     step2: considering shipping charges dont contribute to profits
     step3: for our company side take transaction value as total + shipping
@@ -504,36 +541,242 @@ router.post('/checkout', userAuth, async function(req, res){
     step6: create trasaction history for each order 
     step7: empty the cart
     */
+//send user token with header
+router.post('/checkout', userAuth, async function(req, res){
+  
+  try{
+    const usercart = await CartModel.findOne({
+      userId: req.userId
+    })
 
     const user_info = await UserInfoModel.findOne({
       userId : req.userId
     })
 
-    const user_pincode = user_info.address.find(item => item.addressId===addId)
+    const user_pincode = user_info.address.find(item => item.addressId===usercart.addId)
     const cart_items = usercart.items;
 
     const userOrderHistory = await UserOrderHistoryModel.findOne({
       userID: req.userId
     })
+    
+    let custorderItems=[];
+    let custorderValue=0;
+
+    let adminOrderValue = 0;
+    let adminOrderRevenue = 0;
+    let adminOrderProfit = 0;
+    let adminOrderItems =[];
+
+    const orderId = orderIdGenerator();
+    const orderAt = Date.now();
+    const date = new Date(orderAt);
+    const orderDateTime = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+    
+
+    let linecounter = 1;
 
     for(let item of cart_items){
       const eligible = item.eligible
 
       //if product is eligible, then only do the following steps
       if(eligible){
+        //user order history
+        let product = {
+          LineId: linecounter,
+          orderTimeStamp: orderAt,
+          orderDateTime: orderDateTime,
+          orderStatus: "Active",
+          orderStatusCode: 0,
+          deliveryStatusCode: 0,
+          deliveryStatus: "Order Placed",
+          eta: item.eta,
+          productId: item.productId,
+          productName: item.name,
+          price: item.totalPrice,
+          quantity: item.quantity,
+          variant: item.variant,
+          image: item.images[0],
+          vendorId: item.vendorId,
+          vendorName: item.vendorName,
+        }
+        //add the product to history of user
+        custorderItems.push(product)
+        custorderValue+=item.totalPrice
+
+        const productInfo = await ProductModel.findOne({
+          _id: item.productId
+        })
+        const vendorsales = await VendorSalesModel.findOne({
+          vendorId: item.vendorId,
+        })
+
+        let adminfee = 0;
+        let vendorRevenue = 0;
+        let platformFee = getPlatformfee(); // Ensure platformFee is a valid number
+        platformFee = platformFee/100;
         
-        
-        
+        if (!isNaN(platformFee)) {
+            if (item.discountType === 1) {
+                let vendorDiscount = parseInt(productInfo.discount.vendor.disc || 0);
+                let newTotal = parseInt(item.subtotal1) - (parseInt(item.subtotal1 || 0) * vendorDiscount);
+                adminfee = newTotal * platformFee;
+                vendorRevenue+=  newTotal - adminfee;
+            } else if (item.discountType === 2) {
+                adminfee = parseInt(item.subtotal2 || 0) * platformFee;
+                vendorRevenue+= item.subtotal2 - adminfee;
+            }
+        }
+
+        let vendorProfit = vendorRevenue - (parseInt(productInfo.costPrice) * (item.quantity));
+
+
+        let newVendorSale = {
+          orderId: orderId,
+          LineId: linecounter,
+          orderTimeStamp: orderAt,
+          orderDateTime: orderDateTime,
+          orderStatus: "Active",
+          orderStatusCode: 0,
+          deliveryStatusCode: 0,
+          deliveryStatus: "Order Placed",
+          eta: item.eta,
+          productId: item.productId,
+          productName: item.name,
+          saleRevenue: vendorRevenue,
+          saleProfit: vendorProfit,
+          quantity: item.quantity,
+          variant: item.variant,
+          image: item.images[0],
+          vendorId: item.vendorId,
+          vendorName: item.vendorName,
+          custId: user_info.userId,
+          custName: user_info.name,
+          custPic: user_info.image[0],
+          deliveryAdd: usercart.address,
+          deliveryPincode: usercart.pincode,
+        }
+
+        //put new sale to vendor profile
+        vendorsales.sales.push(newVendorSale);
+        vendorsales.totalRevenue += parseInt(newVendorSale.saleRevenue);
+        vendorsales.totalProfits +=parseInt(newVendorSale.saleProfit);
+
+        await vendorsales.save();
+
+        let adminOrder = {
+          LineId: linecounter,
+          orderStatus: "Active",
+          orderStatusCode: 0,
+          deliveryStatusCode: 0,
+          deliveryStatus: "Order Placed",
+          eta: item.eta,
+          productId: item.productId,
+          productName: item.name,
+          quantity: item.quantity,
+          variant: item.variant,
+          image: item.images[0],
+          vendorId: item.vendorId,
+          vendorName: item.vendorName,
+          itemRevenue: item.totalPrice,
+          itemShipping: item.shipping_cost,
+          itemProfit: adminfee
+        }
+        adminOrderItems.push(adminOrder);
+        adminOrderValue+=item.totalPrice;
+        adminOrderRevenue+=adminfee + item.shipping_cost;
+        adminOrderProfit += adminfee;
+
+        const ProductSale = await ProductSalesModel.findOne({
+          productId: item.productId
+        })
+
+        let newProductSale = {
+          custId: user_info.userId,
+          custName: user_info.name,
+          custPic: user_info.image[0],
+          deliveryAdd: usercart.address,
+          deliveryPincode: usercart.pincode,
+          quantity: item.quantity,
+          variant: item.variant,
+          saleRevenue: item.totalPrice,
+        }
+        ProductSale.sales.push(newProductSale)
+        ProductSale.quantitySold+=item.quantity;
+        ProductSale.productRevenue+=item.totalPrice;
+        await ProductSale.save();
+
+        linecounter+=1;
       }
+
+      const ProductQuantity = await ProductQuantityModel.findOne({
+        productId: item.productId
+      });
+      
+      if (ProductQuantity) {
+        const variantIndex = ProductQuantity.quantity.findIndex(q => q.type === item.variant);
+        
+        if (variantIndex !== -1) {
+          const currentQuantity = parseInt(ProductQuantity.quantity[variantIndex].quantity, 10);
+          const subtractQuantity = parseInt(item.quantity, 10);
+          
+          if (currentQuantity >= subtractQuantity) {
+            ProductQuantity.quantity[variantIndex].quantity = (currentQuantity - subtractQuantity).toString();
+            ProductQuantity.total = ProductQuantity.quantity.reduce((acc, q) => acc + parseInt(q.quantity, 10), 0);
+      
+            // Save the updated document
+            ProductQuantity.total = ProductQuantity.total - subtractQuantity;
+            await ProductQuantity.save();
+          }
+        }
+      }
+      
     }
-    
+    let custnewOrder = {
+      orderId: orderId,
+      orderTimeStamp: orderAt,
+      orderDateTime: orderDateTime,
+      orderItems: custorderItems,
+      orderValue: usercart.grandtotal,
+      deliveryAdd: usercart.address,
+      deliveryPincode: usercart.pincode,
+
+    }
+    userOrderHistory.orderHistory.push(custnewOrder)
+    await userOrderHistory.save();
+
+    await OrderModel.create({
+      orderId,
+      custId: user_info.userId,
+      custName: user_info.name,
+      custPic: user_info.image[0],
+      orderAt,
+      orderDateTime,
+      orderItems: adminOrderItems,
+      orderValue: adminOrderValue,
+      orderRevenue: adminOrderRevenue,
+      orderProfit: adminOrderProfit
+    })
+
+    usercart.items=[]
+    usercart.beforeDiscount=0;
+    usercart.hasItems = false;
+    usercart.grandtotal=0;
+    usercart.totalShipping=0;
+    usercart.afterDiscount=0;
+
+    await usercart.save();
+
 
 
     res.json({
-      message: "Ok"
+      success: true,
+      message: "Order Placed Successfully"
     })
 
   }catch(err){
+    console.log(err)
     res.status(500).json({
       success: false,
       message: "unable to fetch cart/ process payment"
