@@ -4,7 +4,7 @@ import imageUploadToCloudinary from '../../middlewares/uploadMiddleware.cjs';
 import upload from '../../middlewares/multer.js';
 import vendorAuth from '../../middlewares/vendorAuth.js';
 import { ProductModel, ProductQuantityModel, ProductQuestionModel, ProductSalesModel } from '../../models/productModel.js';
-import { VendorInfoModel } from '../../models/vendorModel.js';
+import { VendorInfoModel, VendorSalesModel } from '../../models/vendorModel.js';
 
 import { ProductReviewModel } from '../../models/productModel.js';
 import mongoose from 'mongoose';
@@ -397,5 +397,48 @@ router.post('/applyDiscount', vendorAuth, async function(req, res) {
         });
     }
 });
+
+router.get('/salesData', vendorAuth, async function (req,res){
+    try{   
+        const vendorId = req.vendorId;
+
+        const sales_data = await VendorSalesModel.findOne({
+            vendorId: vendorId
+        })
+
+        res.status(200).json({
+            success: true,
+            data: sales_data
+        })
+
+
+    }catch(e){
+        res.status(500).json({
+            success: false,
+            message: "Unable to fetch sales data"
+        })
+    }
+})
+
+router.get('/productReviews', vendorAuth, async function (req,res){
+    const vendorId = req.vendorId;
+    try{
+        const vendorProducts = await ProductModel.find({
+            vendorId: vendorId
+        })
+        const productIds = vendorProducts.map(product => product._id);
+        const productData = vendorProducts.map(product => ({
+            name: product.name,
+            image: product.image[0]
+          }));
+        let reviewData=[]
+        productIds.forEach(async (id,index)=>{
+            const productReview = await ProductReviewModel.findOne({
+                productId: id
+            })
+            
+        })
+    }catch(e){}
+})
 
 export default router;

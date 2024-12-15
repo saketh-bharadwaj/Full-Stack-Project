@@ -532,15 +532,7 @@ router.get('/cart', userAuth, async function(req, res){
   }
 
 })
-/*
-    step1: take each item from cart and calculate total price (incl. shipping if applicable)
-    step2: considering shipping charges dont contribute to profits
-    step3: for our company side take transaction value as total + shipping
-    step4: take percentage from each product(+deleivery) as revenue for us. profit will be only our cut
-    step5: price - our cut as revenue for vendor. also give purchase history for them
-    step6: create trasaction history for each order 
-    step7: empty the cart
-    */
+
 //send user token with header
 router.post('/checkout', userAuth, async function(req, res){
   
@@ -591,10 +583,18 @@ router.post('/checkout', userAuth, async function(req, res){
           orderStatusCode: 0,
           deliveryStatusCode: 0,
           deliveryStatus: "Order Placed",
+          isDelivered: false,
+          deliveryDateTime:"NA",
+          deliveryBy: productInfo.delivery,
           eta: item.eta,
           productId: item.productId,
           productName: item.name,
-          price: item.totalPrice,
+          productRate: item.price,
+          discountApplied: item.discount,
+          originalPrice: item.subtotal1,
+          discountedPrice: item.subtotal2,
+          shipping: item.shipping_cost,
+          totalPrice: item.totalPrice,
           quantity: item.quantity,
           variant: item.variant,
           image: item.images[0],
@@ -641,7 +641,10 @@ router.post('/checkout', userAuth, async function(req, res){
           orderStatusCode: 0,
           deliveryStatusCode: 0,
           deliveryStatus: "Order Placed",
+          deliveryBy: productInfo.delivery,
           eta: item.eta,
+          isDelivered: false,
+          deliveryDateTime:"NA",
           productId: item.productId,
           productName: item.name,
           saleRevenue: vendorRevenue,
@@ -672,6 +675,9 @@ router.post('/checkout', userAuth, async function(req, res){
           deliveryStatusCode: 0,
           deliveryStatus: "Order Placed",
           eta: item.eta,
+          deliveryBy: productInfo.delivery,
+          isDelivered: false,
+          deliveryDateTime:"NA",
           productId: item.productId,
           productName: item.name,
           quantity: item.quantity,
@@ -679,7 +685,7 @@ router.post('/checkout', userAuth, async function(req, res){
           image: item.images[0],
           vendorId: item.vendorId,
           vendorName: item.vendorName,
-          itemRevenue: item.totalPrice,
+          pricePaid: item.totalPrice,
           itemShipping: item.shipping_cost,
           itemProfit: adminfee
         }
@@ -707,31 +713,28 @@ router.post('/checkout', userAuth, async function(req, res){
         ProductSale.productRevenue+=item.totalPrice;
         await ProductSale.save();
 
+        
+
+        const ProductQuantity = await ProductQuantityModel.findOne({
+          productId: item.productId
+        });
+  
+        const subtractQuan = item.quantity
+        //my way of doing it
+        let quantityarr = ProductQuantity.quantity
+        quantityarr.forEach(variant => {
+          if(variant.type===item.variant){
+            variant.quantity = parseInt(variant.quantity) - subtractQuan
+          }
+        })
+        ProductQuantity.markModified('quantity');
+        ProductQuantity.total-=subtractQuan;
+
+        await ProductQuantity.save();
+
         linecounter+=1;
       }
 
-      const ProductQuantity = await ProductQuantityModel.findOne({
-        productId: item.productId
-      });
-      
-      if (ProductQuantity) {
-        const variantIndex = ProductQuantity.quantity.findIndex(q => q.type === item.variant);
-        
-        if (variantIndex !== -1) {
-          const currentQuantity = parseInt(ProductQuantity.quantity[variantIndex].quantity, 10);
-          const subtractQuantity = parseInt(item.quantity, 10);
-          
-          if (currentQuantity >= subtractQuantity) {
-            ProductQuantity.quantity[variantIndex].quantity = (currentQuantity - subtractQuantity).toString();
-            ProductQuantity.total = ProductQuantity.quantity.reduce((acc, q) => acc + parseInt(q.quantity, 10), 0);
-      
-            // Save the updated document
-            ProductQuantity.total = ProductQuantity.total - subtractQuantity;
-            await ProductQuantity.save();
-          }
-        }
-      }
-      
     }
     let custnewOrder = {
       orderId: orderId,
@@ -768,8 +771,6 @@ router.post('/checkout', userAuth, async function(req, res){
 
     await usercart.save();
 
-
-
     res.json({
       success: true,
       message: "Order Placed Successfully"
@@ -782,6 +783,25 @@ router.post('/checkout', userAuth, async function(req, res){
       message: "unable to fetch cart/ process payment"
     })
 
+  }
+})
+
+//get order history
+router.get('/orderHistory', userAuth, async function (req, res){
+  try{
+    const orderHistory = await UserOrderHistoryModel.findOne({
+      userID: req.userId
+    })
+
+    res.status(200).json({
+      success: true,
+      data: orderHistory
+    })
+  }catch(err){
+    res.status(500).json({
+      success: false,
+      message: "Unable to get Order History"
+    })
   }
 })
 
