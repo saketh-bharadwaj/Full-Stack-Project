@@ -10,6 +10,7 @@ import userOperations from './routes/user/userOperations.js'
 import vendorSignup from './routes/vendor/vendorSignup.js'
 import vendorSignin from './routes/vendor/vendorSignin.js'
 import vendorOperations from './routes/vendor/vendorOperations.js'
+import vendorProfile from './routes/vendor/vendorProfile.js'
 
 import multer from 'multer';
 dotenv.config();
@@ -36,6 +37,7 @@ app.use("/user", userOperations);
 app.use("/vendor",vendorSignup)
 app.use("/vendor",vendorSignin)
 app.use("/vendor",vendorOperations)
+app.use("/vendor",vendorProfile)
 
 
 // testing api endpoints remove before deployment

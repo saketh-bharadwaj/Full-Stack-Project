@@ -112,7 +112,7 @@ router.get('/profile', userAuth, async function (req,res){
     const userdata = await UserInfoModel.findOne({
       userId: req.userId
     })
-    console.log(userdata)
+    
     if(userdata){
       res.json({
         success: true,
@@ -574,6 +574,10 @@ router.post('/checkout', userAuth, async function(req, res){
 
       //if product is eligible, then only do the following steps
       if(eligible){
+
+        const productInfo = await ProductModel.findOne({
+          _id: item.productId
+        })
         //user order history
         let product = {
           LineId: linecounter,
@@ -605,9 +609,7 @@ router.post('/checkout', userAuth, async function(req, res){
         custorderItems.push(product)
         custorderValue+=item.totalPrice
 
-        const productInfo = await ProductModel.findOne({
-          _id: item.productId
-        })
+        
         const vendorsales = await VendorSalesModel.findOne({
           vendorId: item.vendorId,
         })

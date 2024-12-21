@@ -1,5 +1,5 @@
 import express from 'express';
-import { ProductModel, ProductQuantityModel, ProductQuestionModel, ProductReviewModel } from '../models/productModel.js';
+import { ProductModel, ProductQuantityModel, ProductQuestionModel, ProductReviewModel, ProductSalesModel } from '../models/productModel.js';
 import { VendorInfoModel } from '../models/vendorModel.js';
 
 const router = express.Router();
@@ -11,6 +11,7 @@ router.get('/products', async function (req, res) {
 
     
     const productQuantities = await ProductQuantityModel.find(); 
+    const productReviews = await ProductReviewModel.find();
 
    
     const productsWithQuantities = products.map(product => {
@@ -18,15 +19,19 @@ router.get('/products', async function (req, res) {
       const productQuantity = productQuantities.find(
         (quantity) => quantity.productId.toString() === product._id.toString()
       );
-
+      const productRating = productReviews.find(
+        (productReview) => productReview.productId.toString() === product._id.toString()
+      );
       
-      if (productQuantity) {
+      if (productQuantity && productRating) {
         return {
           ...product.toObject(),  
           hasVariant: productQuantity.hasVariant,  
           variantType: productQuantity.variantType,
           quantity: productQuantity.quantity,
-          total: productQuantity.total  
+          total: productQuantity.total, 
+          hasReviews: productRating.hasReviews,
+          reviews: productRating.reviews
         };
       } else {
        
@@ -96,6 +101,50 @@ router.get('/product/:productId', async function (req, res){
     })
   }
 })
+
+//trending products  top 15
+router.get('/trendingProducts', async function (req, res) {
+  try {
+      
+      const productSales = await ProductSalesModel.find();
+
+      
+      const topProducts = productSales
+          .sort((a, b) => b.quantitySold - a.quantitySold) 
+          .slice(0, 15) // Take top 15
+          .map((product) => ({
+              productId: product.productId,
+              quantitySold: product.quantitySold
+          }));
+
+      
+      const productDetails = await Promise.all(
+          topProducts.map(async (product) => {
+              const productInfo = await ProductModel.findOne({ _id: product.productId });
+              return {
+                  productId: product.productId,
+                  quantitySold: product.quantitySold,
+                  name: productInfo?.name || "Unknown Product", // Fallback if no product found
+                  image: productInfo?.image?.[0] || null // Fallback if no image available
+              };
+          })
+      );
+
+      // Step 4: Send the response
+      res.status(200).json({
+          success: true,
+          trendingProducts: productDetails
+      });
+  } catch (err) {
+      console.error("Error fetching trending products:", err);
+      res.status(500).json({
+          success: false,
+          message: "Unable to fetch trending products",
+          error: err.toString()
+      });
+  }
+});
+
 
 export default router;
 

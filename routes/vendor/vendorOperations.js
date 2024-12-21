@@ -8,6 +8,7 @@ import { VendorInfoModel, VendorSalesModel } from '../../models/vendorModel.js';
 
 import { ProductReviewModel } from '../../models/productModel.js';
 import mongoose from 'mongoose';
+import { OrderModel } from '../../models/adminModel.js';
 const ObjectId=mongoose.ObjectId;
 const router = express.Router();
 
@@ -420,25 +421,200 @@ router.get('/salesData', vendorAuth, async function (req,res){
     }
 })
 
-router.get('/productReviews', vendorAuth, async function (req,res){
+router.get('/productReviews', vendorAuth, async function (req, res) {
     const vendorId = req.vendorId;
-    try{
+    try {
         const vendorProducts = await ProductModel.find({
             vendorId: vendorId
-        })
+        });
         const productIds = vendorProducts.map(product => product._id);
         const productData = vendorProducts.map(product => ({
+            productId: product._id,
             name: product.name,
             image: product.image[0]
-          }));
-        let reviewData=[]
-        productIds.forEach(async (id,index)=>{
-            const productReview = await ProductReviewModel.findOne({
-                productId: id
+        }));
+
+        const productReviews = await Promise.all(
+            productData.map(async product => {
+                const productReview = await ProductReviewModel.findOne({
+                    productId: product.productId
+                });
+                return productReview || { hasReviews: false, reviews: [] }; // Default values for missing reviews
             })
-            
+        );
+
+        productData.forEach((product, index) => {
+            const reviewData = productReviews[index];
+            product.hasReviews = reviewData.hasReviews;
+            product.reviews = reviewData.reviews;
+        });
+
+        res.status(200).json({
+            success: true,
+            data: productData
+        });
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({
+            success: false,
+            message: "Unable to get review data"
+        });
+    }
+});
+
+
+router.get('/productQuestions', vendorAuth, async function(req,res){
+    const vendorId = req.vendorId
+    try{
+        const productQuestions = await ProductQuestionModel.find({
+            vendorId: vendorId
         })
-    }catch(e){}
+        const mergedData = await Promise.all(
+            productQuestions.map(async (question) => {
+                const productDetails = await ProductModel.findOne({ _id: question.productId });
+                return {
+                    ...question.toObject(), 
+                    productName: productDetails?.name || null,
+                    productImage: productDetails?.image[0] || null
+                };
+            })
+        );
+
+        res.status(200).json({
+            success: true,
+            data: mergedData
+        })
+    }
+    catch(e){
+        console.log(e);
+        res.status(500).json({
+            success: false,
+            message: "Unable to fetch questions"
+        })
+    }
+})
+
+router.post('/ansQuestion/:productId', vendorAuth, async function (req,res){
+    const vendorId = req.vendorId
+    try{
+        const { quesId, answer } = req.body;
+        const vendorInfo = await VendorInfoModel.findOne({
+            vendorId: vendorId
+        })
+        const productques = await ProductQuestionModel.findOne({
+            productId: req.params.productId
+        });
+        if (!productques) {
+            return res.status(404).json({
+            success: false,
+            message: "Product questions not found"
+            });
+        }
+            
+        const questionIndex = productques.questions.findIndex(q => q.quesId == quesId);
+            
+        if (questionIndex === -1) {
+        return res.status(404).json({
+        success: false,
+        message: "Question not found"
+        });
+        }
+            
+            
+        if (productques.questions[questionIndex].isAnswered === false) {
+            productques.questions[questionIndex].isAnswered = true;
+        }
+        productques.questions[questionIndex].isAnsweredByVendor = true;
+
+        const answerAt = Date.now();
+        const date = new Date(answerAt);
+        const answerDateTime = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+        
+        const answerobj = {
+            text: answer,
+            isVendor: true,
+            answeredBy: `Vendor: ${vendorInfo.name}`,
+            answerAt: answerAt,
+            answerDateTime: answerDateTime
+        };
+        await ProductQuestionModel.updateOne(
+            { productId: req.params.productId, 'questions.quesId': quesId },
+            {
+              $push: { 'questions.$.answers': answerobj }, 
+              $set: { 'questions.$.isAnswered': true }    
+            }
+          );
+        
+        res.status(200).json({
+            success: true,
+            message: "Question Answered successfully"
+        } )
+      
+     }
+     catch(err){
+        console.log(err)
+        res.status(500).json({
+            success: false,
+            message: "Unable to post answer"
+        })
+     }
+})
+
+router.post('/updateDeliveryStatus', vendorAuth, async function(req,res){
+    try{
+        const deliverAt = Date.now();
+        const date = new Date(deliverAt);
+        const deldatetime = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+        const vendorId = req.vendorId
+        const {orderId, LineId} = req.body
+        const vendorSales = await VendorSalesModel.findOne({
+            vendorId: vendorId
+        })
+        const sale = vendorSales.sales.find(s => s.orderId == orderId && s.LineId == LineId);
+        if (sale.deliveryStatusCode === 0) {
+            sale.deliveryStatusCode = 1;
+            sale.deliveryStatus = "Order Accepted";
+        } else if (sale.deliveryStatusCode === 1) {
+            sale.deliveryStatusCode = 2;
+            sale.deliveryStatus = "Order Dispatched";
+        } else if (sale.deliveryStatusCode === 2) {
+            sale.deliveryStatusCode = 3;
+            sale.deliveryStatus = "Out for Delivery";
+        } else if (sale.deliveryStatusCode === 3) {
+            sale.orderStatusCode = 1;
+            sale.orderStatus = "completed"
+            sale.isDelivered = true
+            sale.deliveryDateTime = deldatetime
+            sale.deliveryStatusCode = 4;
+            sale.deliveryStatus = "Delivery Successful";
+        } else {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid delivery status code"
+            });
+        }
+        vendorSales.markModified('sales');
+        await vendorSales.save();
+
+        const adminOrder = await OrderModel.findOne({
+            orderId: orderId
+        })
+        let LineIdorder = adminOrder.orderItems.find(l => l.LineId==Lineid)
+        
+        
+        res.status(200).json({
+            success: true,
+            message: "Status updated Succesfully"
+        })
+    }
+    catch(err){
+        console.log(err)
+        res.status(500).json({
+            success: false,
+            message: "Unable to update status"
+        })
+    }
 })
 
 export default router;

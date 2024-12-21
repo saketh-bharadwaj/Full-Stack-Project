@@ -33,6 +33,7 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
         pincode: pincode
        }
        addressarray.push(addressobj)
+       
         await UserInfoModel.create({
             name: name,
             address: addressarray,
@@ -47,19 +48,25 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
             hasitems: false,
             items: [],
             beforeDiscount: 0,
-            total: 0
+            afterDiscount: 0,
+            totalShipping: 0,
+            grandtotal: 0,
+            addId: addid,
+            address: address,
+            pincode: pincode
         })
 
         await UserOrderHistoryModel.create({
-            userId: newUser._id,
+            userID: newUser._id,
             orderHistory: []
         })
 
     } catch(err) {
-        console.log(err);
+        
         res.json({
             success: false,
-            message: "user Already exists"
+            message: "user Already exists",
+            error: err
         });
         errorThrown = true;
     }

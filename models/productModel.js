@@ -50,6 +50,7 @@ const ProductReview = new Schema({
 
 const ProductQuestions = new Schema({
   productId: {type: ObjectId, required: true},
+  vendorId: {type:ObjectId, required: true},
   hasQuestions: {type: Boolean, default: false},
   questions: {type :[Object]}
 })
