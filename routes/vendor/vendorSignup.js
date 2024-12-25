@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import upload from '../../middlewares/multer.js';
 import imgupload from '../../controllers/routeupload.js';
 import imageUploadToCloudinary from '../../middlewares/uploadMiddleware.cjs';
-import { VendorModel, VendorInfoModel } from '../../models/vendorModel.js';
+import { VendorModel, VendorInfoModel, VendorSalesModel } from '../../models/vendorModel.js';
 
 const router = express.Router();
 
@@ -28,6 +28,13 @@ router.post('/signup', upload.array('images'), imageUploadToCloudinary, async fu
             vendorId: newVendor._id,
             image: req.image_url // Use the image URL uploaded to Cloudinary
         });
+
+        await VendorSalesModel.create({
+            vendorId: newVendor._id,
+            sales: [],
+            totalProfits: 0,
+            totalRevenue: 0
+        })
 
     } catch(err) {
         console.log(err);
