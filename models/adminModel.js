@@ -15,6 +15,12 @@ const OrderSchema = new Schema({
     orderProfit: {type: Number}
 })
 
-const OrderModel = mongoose.model('orders', OrderSchema)
+const adminInfoSchema = new Schema({
+    email: {type: String, required: true},
+    password: {type: String, required: true}
+})
 
-export {OrderModel}
+const OrderModel = mongoose.model('orders', OrderSchema)
+const adminInfoModel = mongoose.model('admin-details', adminInfoSchema)
+
+export {OrderModel, adminInfoModel}
