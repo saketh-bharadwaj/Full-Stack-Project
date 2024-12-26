@@ -17,7 +17,9 @@ const OrderSchema = new Schema({
 
 const adminInfoSchema = new Schema({
     email: {type: String, required: true},
-    password: {type: String, required: true}
+    password: {type: String, required: true},
+    name: {type: String},
+    image: {type: String}
 })
 
 const OrderModel = mongoose.model('orders', OrderSchema)
