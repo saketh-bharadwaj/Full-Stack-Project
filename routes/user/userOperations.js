@@ -209,6 +209,7 @@ router.post('/addQuestion/:productId', userAuth, async function(req, res){
     })
 
   }catch(err){
+    console.log(err)
     res.status(500).json({
       success: false,
       message: "unable to add question"
