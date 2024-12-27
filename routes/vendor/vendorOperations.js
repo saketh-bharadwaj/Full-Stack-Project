@@ -520,6 +520,7 @@ router.post('/ansQuestion/:productId', vendorAuth, async function (req,res){
         message: "Question not found"
         });
         }
+        
             
             
         if (productques.questions[questionIndex].isAnswered === false) {
@@ -535,6 +536,7 @@ router.post('/ansQuestion/:productId', vendorAuth, async function (req,res){
             text: answer,
             isVendor: true,
             answeredBy: `Vendor: ${vendorInfo.name}`,
+            profilePic: vendorInfo.image[0],
             answerAt: answerAt,
             answerDateTime: answerDateTime
         };

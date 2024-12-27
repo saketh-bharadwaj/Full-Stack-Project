@@ -178,6 +178,9 @@ router.post('/addQuestion/:productId', userAuth, async function(req, res){
     const productques = await ProductQuestionModel.findOne({
       productId: req.params.productId
     })
+    const userInfo = await UserInfoModel.findOne({
+      userId: req.userId
+    })
     const quesId = generateRandomId();
     const askedAt = Date.now();
     const actualDate = new Date(askedAt);
@@ -189,6 +192,7 @@ router.post('/addQuestion/:productId', userAuth, async function(req, res){
       text: question,
       answers: [],
       askedBy: req.user_name,
+      profilePic: userInfo.image[0],
       askedAt: askedAt,
       askedDateTime: askedDateTime
     }
@@ -249,10 +253,14 @@ router.post('/answerQues/:productId', userAuth, async function (req, res) {
     const date = new Date(answerAt);
     const answerDateTime = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
 
+    const userInfo = await UserInfoModel.findOne({
+      userId: req.userId
+    })
     const answerobj = {
       text: answer,
       isVendor: false,
       answeredBy: req.user_name,
+      profilePic: userInfo.image[0],
       answerAt: answerAt,
       answerDateTime: answerDateTime
     };
