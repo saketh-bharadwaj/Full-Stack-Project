@@ -680,6 +680,7 @@ router.post('/checkout', userAuth, async function(req, res){
         await vendorsales.save();
 
         let adminOrder = {
+          orderId: orderId,
           LineId: linecounter,
           orderStatus: "Active",
           orderStatusCode: 0,
@@ -815,6 +816,8 @@ router.get('/orderHistory', userAuth, async function (req, res){
     })
   }
 })
+
+
 
 
 

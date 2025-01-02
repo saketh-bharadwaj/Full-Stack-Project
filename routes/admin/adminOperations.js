@@ -6,6 +6,7 @@ import { OrderModel } from "../../models/adminModel.js";
 import adminAuth from "../../middlewares/adminAuth.js";
 import { ProductModel, ProductQuantityModel, ProductReviewModel, ProductSalesModel } from "../../models/productModel.js";
 import { VendorInfoModel, VendorSalesModel } from "../../models/vendorModel.js";
+import { UserModel, UserOrderHistoryModel } from "../../models/userModel.js";
 
 const router = express.Router();
 
@@ -299,5 +300,22 @@ router.get('/vendorStatistics', adminAuth, async function(req, res) {
     }
 });
 
+router.get('noOfUsers', adminAuth, async function(req,res){
+    try{
+        const users = await UserModel.find();
+        const noOfusers = users.length
+        res.status(200).json({
+            success: true,
+            data: noOfusers
+        })
+
+    }catch(err){
+        console.log(err)
+        res.status(500).json({
+            success: false,
+            message: "Unable to get info"
+        })
+    }
+})
 
 export default router;
