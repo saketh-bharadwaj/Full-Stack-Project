@@ -622,6 +622,10 @@ router.post('/checkout', userAuth, async function(req, res){
         const vendorsales = await VendorSalesModel.findOne({
           vendorId: item.vendorId,
         })
+        
+        const vendorInfo = await VendorInfoModel.findOne({
+          vendorId: item.vendorId
+        })
 
         let adminfee = 0;
         let vendorRevenue = 0;
@@ -681,6 +685,8 @@ router.post('/checkout', userAuth, async function(req, res){
 
         let adminOrder = {
           orderId: orderId,
+          orderAt: orderAt,
+          orderDateTime: orderDateTime,
           LineId: linecounter,
           orderStatus: "Active",
           orderStatusCode: 0,
@@ -697,9 +703,15 @@ router.post('/checkout', userAuth, async function(req, res){
           image: item.images[0],
           vendorId: item.vendorId,
           vendorName: item.vendorName,
-          pricePaid: item.totalPrice,
+          vendorPic: vendorInfo.image[0],
+          itemRevenue: item.totalPrice,
           itemShipping: item.shipping_cost,
-          itemProfit: adminfee
+          itemProfit: adminfee,
+          custId: user_info.userId,
+          custName: user_info.name,
+          custPic: user_info.image[0],
+          deliveryAdd: usercart.address,
+          deliveryPincode: usercart.pincode,
         }
         adminOrderItems.push(adminOrder);
         adminOrderValue+=item.totalPrice;

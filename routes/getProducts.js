@@ -145,6 +145,35 @@ router.get('/trendingProducts', async function (req, res) {
   }
 });
 
+router.get('/vendorDetails', async function(req, res){
+  try{
+    const vendorDetails = await VendorInfoModel.find()
+
+    const responseData = []
+
+    vendorDetails.forEach(vendor => {
+     let obj = {
+        vendorName : vendor.name,
+        vendorId: vendor.vendorId,
+        vendorPic: vendor.image[0]
+      }
+
+      responseData.push(obj)
+    });
+
+    res.status(200).json({
+      success: true,
+      data: responseData
+    })
+  } catch(err){
+    console.log(err)
+    res.status(500).json({
+      success: false,
+      message: "Unable to fetch data"
+    })
+  }
+})
+
 
 export default router;
 
